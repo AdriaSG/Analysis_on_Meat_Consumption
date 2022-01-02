@@ -1,0 +1,574 @@
+---
+title: "Meat Consumption"
+author: "Adriana Sanchez., Abdennaceur Mhabdhbi. & Matthias Kunz."
+date: "19.7.2021"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r Matthias setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message=FALSE)
+```
+
+```{r import Matthias, include=FALSE}
+library(ggplot2)
+library(ggmosaic)
+library(tidyr)
+library(GGally)
+library(patchwork) #Added by Adriana (14.07) to add multiple figures in a grid
+library(reshape2) # Added by Matthias (16.07) to reformat data for the mosaicplot
+#setwd("/Users/adrsanchez/Google Drive/Beuth/Data Visualization/Project")
+df <- read.csv("data_combined_v7.csv")
+colnames(df)[names(df) == "Employment.in.agriculture..female....of.female.employment...modeled.ILO.estimate."] <- "Employment.in.agriculture..female"
+colnames(df)[names(df) == "Employment.in.agriculture..male....of.male.employment...modeled.ILO.estimate."] <- "Employment.in.agriculture..male"
+colnames(df)[names(df) == "Diabetes.prevalence....of.population.ages.20.to.79."] <- "Diabetes.prevalence"
+
+df$MEATCONSUMP.Total.Kg. <- apply(cbind(df$MEATCONSUMP.Beef.Kg., df$MEATCONSUMP.Pig.Kg., df$MEATCONSUMP.Sheep.Kg., df$MEATCONSUMP.Poultry.Kg.),
+                                  1, sum)
+df$CROP.TYPE.Soybean.Ha.pP. <- df$CROP.TYPE.Soybean.Thnd.Ha. * 1000 / df$Population..total
+df$CROP.TYPE.Maize.Ha.pP. <- df$CROP.TYPE.Maize.Thnd.Ha. * 1000 / df$Population..total
+df$CROP.TYPE.Rice.Ha.pP. <-  df$CROP.TYPE.Rice.Thnd.Ha. * 1000 / df$Population..total
+df$CROP.TYPE.Wheat.Ha.pP. <- df$CROP.TYPE.Wheat.Thnd.Ha. * 1000 / df$Population..total
+
+df$CROP.TYPE.Total.Ha.pP. <- apply(cbind(df$CROP.TYPE.Soybean.Ha.pP., df$CROP.TYPE.Wheat.Thnd.Ha., df$CROP.TYPE.Maize.Thnd.Ha., df$CROP.TYPE.Rice.Thnd.Ha.),
+                                   1, sum)
+df$employment <- apply(cbind(df$Employment.in.agriculture..female, df$Employment.in.agriculture..male), 1,mean)
+
+df$Methane.emissions..kt.of.CO2.equivalent.pP. <- df$Methane.emissions..kt.of.CO2.equivalent. / df$Population..total
+```
+# Abstract 
+Global average meat consumption per capita has been rising since 1960s, but especially from the 1980s decade to today, driven by population growth and increasing average individual incomes. Although meat means an important source of nutrients, it is also evident that a great consumption of this source of proteins has also a negative environmental impact. The consumption of different types of meat also might lead to negative effects in human’s health and livestock production can have negative influence toward climate change. In this paper we aim to analyze meat consumption over the last 30 years with a special focus on different types of visualizations for 35 different countries. 
+
+# Introduction
+Feeding the world in a sustainable way is one of our most pressing challenges in the coming decades. While consumption of meat and meat products means an important source of nutrients like proteins, iron and vitamins, among others to the human diet. It is also clear that this source of proteins has a great environmental impact. Some sources affirm that global demand for meat is growing: over the past 50 years, meat production has more than tripled. The world now produces more than 340 million tonnes each year.
+
+One of the world’s most pressing challenges is to produce and consume meat, dairy and other protein products in a way that reduces its environmental impacts. Up to 23% of the total greenhouse gas emissions (GHG) are derived from agriculture, forestry and other land uses, which are among the major contributors to global warming (IPCC, 2019). Moreover, agricultural overexploitation – larger farm and field sizes, and more use of pesticides and fertilizers – is causing a loss of natural biodiversity and habitats. Among agricultural practices, the livestock industry is also an important contributor to global climate change, contributing between 12% and 18% to the total GHG emissions.
+
+Changing meat consumption habits is an issue hat requires identifying the complex social factors associated with meat eating and developing policies for effective interventions. Given the importance of this for worldwide, we found it as a very interesting topic to analyze where is essential to get access to the available information to find answers to our hypothesis. The present paper was aimed to find interesting visualizations reviewing the relation of wealth and culture against meat production and its impact on human health and the environment. 
+
+### Data format
+
+The dataset used for this analysis comes from two main sources: The World Bank Data and The Organization for Economic Cooperation and Development (OECD). For such purposes, we had merged different variables from 35 different countries around the globe, data is given in a period from 1990 to 2020, including OECD predictions until 2029 in some variables. Data has been preprocessed using python in order to create a more coherent dataset for our visualization analysis. It contains 1520 observations from 29 different variables.
+
+Countries:
+```{r Adriana prepare data, echo=FALSE}
+countries <- subset(df, Region !="")
+unique(countries$Country.Name)
+```
+
+Quick overview on the dataset variables:
+```{r Adriana first look on the summary, echo=FALSE}
+str(df, vec.len=1, max.level=1)
+```
+
+## Theory
+To provide context on our subject and variables, follows a brief description of metrics used for the analysis according The Organization for Economic Co-operation and Development (OECD) and The World Bank Data. 
+
+* **Meat Consumption per person in kilograms. ** This indicator is presented for beef and veal, pig, poultry, and sheep. Meat consumption is measured in thousand tonnes of carcass weight (except for poultry expressed as ready to cook weight) and in kilograms of retail weight per capita. 
+
+* **Crop Production in thousand hectareas. ** Crop yields are the harvested production per unit of harvested area for crop products. This indicator is presented for wheat, maize, rice and soybean. Crop production is measured in thousand hectares.
+
+* **Total Agriculture support in % of GDP. ** TSE transfers represent the total support granted to the agricultural sector. Agricultural support is expressed in monetary terms as % of GDP per country.
+
+* **Producer Protection ratio.** It is defined as the ratio between the average price received by producers (measured at the farm gate), including net payments per unit of current output, and the border price (measured at the farm gate).
+
+* **Region.** Categorical variable that indicates country's geographic location.
+
+* **Income Group. **  Categorical label given by The Global Bank according to the annual GDP of each country.
+
+* **CO2 emissions in tonnes per capita.** Carbon dioxide emissions are those stemming from the burning of fossil fuels and the manufacture of cement. They include carbon dioxide produced during consumption of solid, liquid, and gas fuels and gas flaring.
+
+* **Employment in agriculture by gender (female and male). ** Defined as persons of working age who were engaged in any activity to produce goods or provide services for pay or profit. The agriculture sector consists of activities in agriculture, hunting, forestry and fishing. 
+
+* **GDP per capita in USD.** GDP per capita is gross domestic product divided by midyear population. GDP is the sum of gross value added by all resident producers in the economy plus any product taxes and minus any subsidies not included in the value of the products. It is calculated without making deductions for depreciation of fabricated assets or for depletion and degradation of natural resources. Data are in current U.S. dollars. 
+
+* **Life expectancy at birth in years by gender (female and male). ** Indicates the number of years a newborn infant would live if prevailing patterns of mortality at the time of its birth were to stay the same throughout its life.
+
+* **Methane emissions per capita.** Emissions steamed from human activities such as agriculture and from industrial methane production. 
+
+* **Total population.** Total population is based on the de facto definition of population, which counts all residents regardless of legal status or citizenship. The values shown are midyear estimates.    
+
+## How did the meat consumption change during the time?
+As it had been said, especially in the second half of 20th century global population had rapidly increased. In consequence the meat consumed per person had also grown. Next line plot shows clearly this tendency through the last 30 years for overall consumption. In addition, it provides same information per kind of meat, being poultry the most consumed kind worldwide followed by pig and beef and lastly by sheep. Moreover, during last 10 years beef preference has turned into pig. Also, it's worth to note that beef and sheep report an exception on the general steadily increase trend. On the contrary, it shows a stable behavior through the time and even a slight decrease in consumption particularly in the last two decades. 
+
+```{r Matthias meat overall, echo=FALSE, fig.height=3}
+temp_df <- subset(df, df$TIME < 2020)
+beef <- tapply(temp_df$MEATCONSUMP.Beef.Kg., temp_df$TIME, sum)
+pig <- tapply(temp_df$MEATCONSUMP.Pig.Kg., temp_df$TIME, sum)
+sheep <- tapply(temp_df$MEATCONSUMP.Sheep.Kg., temp_df$TIME, sum)
+poultry <- tapply(temp_df$MEATCONSUMP.Poultry.Kg., temp_df$TIME, sum)
+meat.sum.per.year <- as.data.frame(cbind(beef, pig, sheep, poultry))
+meat.sum.per.year$total <- apply(meat.sum.per.year,1,sum)
+ggplot(meat.sum.per.year, aes(x = unique(temp_df$TIME))) +
+  geom_line(aes(y = beef, color="Beef")) +
+  geom_line(aes(y = sheep, color="Sheep")) +
+  geom_line(aes(y = pig, color="Pig")) +
+  geom_line(aes(y = poultry, color="Poultry")) +
+  geom_line(aes(y = total, color="Total")) +
+  labs(title="Consumed meat by kind of meat over the time", x="Time [years]", y="Meat consumption [kg]", color="Kind of meat") + 
+  scale_color_manual(values=c("red", "pink", "brown", "black",  "blue")) + 
+  theme_bw() #+ 
+  #theme(legend.position ="bottom")#c(0.8,0.64))
+```
+
+## How does the meat consumption differ by kind?
+```{r Matthias meat overall boxplot, echo=FALSE, results='hide',fig.keep='all'}
+country <- subset(df, Country.Name !="" & TIME < 2020)
+
+country <- melt(country, id=c("Country.Name", "LOCATION", "Region", "Income.Group", "TIME"),
+                measure.vars = c("MEATCONSUMP.Beef.Kg.", "MEATCONSUMP.Pig.Kg.", "MEATCONSUMP.Sheep.Kg.", "MEATCONSUMP.Poultry.Kg."))
+country <- subset(country, country$variable == c("MEATCONSUMP.Beef.Kg.", "MEATCONSUMP.Pig.Kg.", "MEATCONSUMP.Sheep.Kg.", "MEATCONSUMP.Poultry.Kg."))
+
+colorder <- c( "red", "pink", "darkgrey", "brown")
+ggplot(country) + 
+  geom_boxplot(aes(x=variable, y=value, fill=factor(variable))) +
+  scale_color_manual( # color scale (for points)
+                     values=colorder,
+                     labels=c("Beef","Pig","Sheep","Poultry"),
+                     name="Group") +
+  scale_fill_manual(# fill scale (for boxes)
+                      values=colorder,
+                      labels=c("Beef","Pig","Sheep","Poultry"),
+                    name="Group") +
+  scale_x_discrete(labels=c("Beef","Pig","Sheep","Poultry")) + 
+  labs(title = "Consumed meat by kind in average for countries and last 30 years",x="Kind of meat", y="Consumed meat p.P. [kg]", color="Kind of Meat") + 
+  theme_bw() + 
+  theme(legend.position ="none")
+```
+Furthermore, when we look in more detail on the distribution by kind of meat, it could be seen that sheep reports less variance in its consumption than other kinds. Beef has a similar variance compared to pig and poultry but the highest outliers. In this paper we'll try to dig deeper to understand whether this behavior is just explained by the time and increasing curves or if there are other factors which might explain such behavior in the distributions.
+
+## Is there any correlation by kind of consumed meat?
+Lastly, in the general overview on the topic. Above matrix plot reviews if there exists any relation between different kinds of meet consumed around the globe. It could be said as for the correlations shown in the figure that people eating beef are more willing to eat poultry above other kinds of meat. This preference is followed by pig and sheep (0.320 and 0.219 of correlation, respectively). Nevertheless, it is a different case when we look at pig, where correlation values are not significant against sheep and poultry (0 - 0.157), except by low income countries reporting high correlation (< 0.69) in all cases. 
+```{r Adriana meat by kind correlation, echo=FALSE}
+#Updated by Adriana 16.07
+#boxplot by region (Adriana)
+no.empty.countries <- subset(df, Region !="" & TIME < 2020)
+ggpairs (data = no.empty.countries, columns = 4:7, aes(colour = Income.Group, alpha=0.5, shape = Income.Group), 
+         upper = list(continuous = wrap('cor', size = 2.5)),
+         diag = list(continuous = "blankDiag"),
+         title = "Correlation by kind of consumed meat",
+         columnLabels=c("Beef", "Pig", "Sheep", "Poultry"))
+         
+```
+
+# Analysis 
+## Meat and Wealth
+Meat consumption is related to living standards, diet, livestock production and consumer prices, as well as macroeconomic uncertainty and shocks to GDP. Compared to other commodities, meat is characterized by high production costs and high output prices, its demand is highly associated with country incomes as well as the changes in diets mainly due to the urbanization of some countries. In this section, first, we analyze meat consumption distribution by kind in each country and then we take a look on other variables that might also influence this habit like GDP, crop production and employment in agricultural sector. 
+
+### Is there any correlation between country and the most consumed kind of meat?
+
+```{r Abdennaceur spineplot by Regions, echo=FALSE, fig.height=8}
+country <- subset(df, Country.Name!="" & Income.Group !="" & TIME < 2020) # Time adjusted to just past time by Matthias (17.07)
+
+
+sheep.country <- country %>% 
+  pivot_longer(c("MEATCONSUMP.Sheep.Kg.")) %>% 
+  ggplot(aes(x=TIME, y=value, color=name)) +
+  geom_smooth(aes(color=Region)) + 
+  labs(x="Time [years]", y="Consumed sheep p.P [kg]") +
+  theme_bw() + 
+  theme(legend.position =c(1.2, -0.8))
+
+beef.country <- country %>% 
+  pivot_longer(c("MEATCONSUMP.Beef.Kg.")) %>% 
+  ggplot(aes(x=TIME, y=value, color=name)) +
+  geom_smooth(aes(color=Region)) + 
+  labs(x="Time [years]", y="Consumed beef p.P [kg]") + 
+  theme_bw() + 
+  theme(legend.position ="none")
+
+poultry.country <- country %>% 
+  pivot_longer(c("MEATCONSUMP.Poultry.Kg.")) %>% 
+  ggplot(aes(x=TIME, y=country$MEATCONSUMP.Poultry.Kg., color=name)) +
+  geom_smooth(aes(color=Region)) + 
+  labs(x="Time [years]", y="Consumed poultry p.P [kg]") + 
+  theme_bw() + 
+  theme(legend.position ="none")
+
+pig.country <- country %>% 
+  pivot_longer(c("MEATCONSUMP.Pig.Kg.")) %>% 
+  ggplot(aes(x=TIME, y=country$MEATCONSUMP.Pig.Kg., color=name)) +
+  geom_smooth(aes(color=Region)) + 
+  labs(x="Time [years]", y="Consumed pig p.P [kg]") + 
+  theme_bw() +
+  theme(legend.position = "none")
+
+(beef.country + pig.country) /(sheep.country + poultry.country) +
+  plot_annotation(title = "Meat consumption by animal and region") +
+  plot_layout(guides = "collect") &  theme(legend.position = "bottom", legend.background = element_rect(fill="lightgray")
+)
+```
+The four plots above give us an overview about the beef, pig, sheep and poultry consumption by the world regions from the year 1990 till 2020. Consumed beef is not varying too much for all regions but since 2000 we have seen a decrease in consumption in North America, Latin America & Caribbean. One of the reasons could be the mad cow disease which happened in the 2000s. People in South Asia and Sub-Saharan Africa consume the least beef all over the world. One of the most populated countries of South Asia is India which considers cattle slaughter, especially cow slaughter, as a sensitive topic because of cattle's traditional status as an endeared and respected living being to some sects of Hinduism, Sikhism, Jainism and Buddhism. The second plot shows that pig consumption had an enormous growth for East Asia & Pacific and Latin America & Caribbean but for Sub-Saharan Africa, Middle East & North Africa and South Asia pig consumption is still low. The third plot highlights that the number of consumed sheep per capita decreases for East Asia & Pacific and South Asia. The last graph depicts a massive increase of consumed poultry all over the world, especially in North America. It is appealing as a protein source as it has less fat.
+
+### Is there a relation between the wealth of a country and its meat consumption and crop production?
+
+```{r Adriana General intro to meat consumption by region, echo=FALSE}
+#Updated by Adriana 16.07
+period2020 <- subset(df, Region !="" & TIME < 2020)
+ggplot(period2020) +
+  aes(x = Region, y = MEATCONSUMP.Total.Kg.) +
+  labs(title = "Meat Consumption by Region", 
+       subtitle = "Period 1990 - 2020",
+       x="Region", y= "Total meat consumption p.P. [kg]", color="Income") + 
+  geom_boxplot(varwidth = TRUE) + # vary boxes width according to n obs.
+  geom_jitter(alpha = 0.5, width = 0.2, aes( colour = Income.Group)) +
+  theme_bw() +
+  theme(axis.text.x = element_text( 
+    angle = 13, size=8, face=3), legend.position = c(0.85, 0.8))
+```
+
+From above figure it can be also observed a general increase trend on meat consumption versus income group across different regions, where in principle the higher the income of the countries the more meat they eat. However such statement is not true for all regions, we can see that specially in East Asia & Pacific and Middle East & North Africa, income doesn't seem to be the only factor influencing the distribution of meat consumption habit but maybe others like culture and/or religion. Additionally, it's worth to notice that Sub-Saharan Africa also shows a clear variance on consumption against income even though the average meat consumption is very low and belongs to the poorest income groups in the globe.  
+
+```{r Matthias wealth and region, echo=FALSE}
+# 
+income.group <- income.group <- subset(df, Income.Group !="")
+group1 <- ggplot(income.group, aes(x = GDP.per.capita..current.US.., y=MEATCONSUMP.Beef.Kg., colour = Income.Group)) +
+  geom_smooth() + 
+  labs(title="Total meat consumption depending on the GDP of the country", x="GDP p.P [US-$]", y="Total meat consumption p.P. [kg]",  color="Income") +
+  theme_bw()
+
+# further inspections on all but high income
+income.other <- income.other <- subset(df, (Income.Group=="Low income" | Income.Group=="Upper middle income" | Income.Group=="Lower middle income"))
+group2 <- ggplot(income.other, aes(x = GDP.per.capita..current.US.., y=MEATCONSUMP.Beef.Kg., colour = Income.Group)) +
+  geom_smooth() +
+  labs(subtitle = "just for developing and emerging countries",
+       x="GDP p.P [US-$]", y="Total meat consumption p.P. [kg]",  color="Income") +
+  scale_color_manual(values = c("#7CAE00", "#00BFC4", "#C77CFF")) +
+  theme_bw()
+
+group1 / group2
+
+```
+
+It's well known that one of the strongest drivers of how much meat people eat has to do with how rich they are. The line plots presented above are comparing meat consumption by income group for all countries against GDP per capita in US Dollars. Growth rates vary across different regions, with consumption in high-income countries static or declining and in middle-income countries moderately to strongly increasing, whereas in low-income countries, meat consumption is on average low and stable.
+
+It can be said by the graph that the hypothesis is true. So, the richer the country is the more meat they consume. However there's a very interesting behavior for the upper middle income group that shows even higher consumption than the high income group. That could be explained either as a shift in diet driven by urbanization of some countries in development or by the fact that this group could consider meat as a luxury item. A zoom in the lower middle income group demonstrates a similar tendency than upper middle group in contrast to the poorest groups where consumption of meat has been very stable. 
+
+
+### How is crop production distributed across the globe?
+The production of meat and its derivated products leads to an enormous loss of calories grown in fields, since cereals and oil seeds have to be cultivated to feed to animals. According to calculations of the United Nations Environment Programme, the calories that are lost by feeding cereals to animals, instead of using them directly as human food, could theoretically feed an extra 3.5 billion people. More than two thirds of the global agricultural area is used for permanent meadows and pastures. If livestock eat grass and other plants that are not suitable for direct human consumption, they do not compete for cereals but increase food supply and add significantly to agricultural production. 
+
+```{r Adriana overview of crop production by region,echo=FALSE}
+#Updated 
+population <- subset(df, Region !="" & TIME < 2020)
+ggplot(population, aes(x = Region, y = CROP.TYPE.Total.Ha.pP.)) +
+  labs(title = "Crop Production by Region", 
+       subtitle = "Period 1990 - 2020",
+       x="Region", y= "Total crop production p.P. [ha]", color= "Income") + 
+  geom_boxplot(varwidth = TRUE) + # vary boxes width according to n obs.
+  geom_jitter(alpha = 0.5, width = 0.2, aes(colour = Income.Group)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 10, size=8, face=3), 
+        legend.position = c(0.85,0.75))
+  
+```
+Crop production depends on the availability of arable land and is affected in particular by yields, macroeconomic uncertainty, as well as consumption patterns; it also has a great incidence on agricultural commodities' prices. Looking at the plot of crop production by region and income group we know that in contrast to meat consumption, here highest income countries are not leading in crop production. On one hand, Latin America & Caribbean shows greater variability in its distribution than the rest of the regions. On the other, East Asia & Pacific as well as the Europe & Central Asia present the largest outliers. We can conclude form this figure that crop production is clustered by a few countries in the world.
+
+
+### Is there any correlation between meat consumption and crop production?
+
+```{r Adriana meat and crop relation , echo = FALSE}
+population <- subset(df, Region !="" & TIME < 2020)
+ggplot(population, aes(x=MEATCONSUMP.Total.Kg., y=CROP.TYPE.Total.Ha.pP., colour = Income.Group)) + 
+  labs(title = "Meat Consumption and Crop Production relation",
+       subtitle = "Period 1990 - 2020",
+       x="Total meat consumption p.P. [kg]", y="Crop Production p.P [ha]", colour="Income") + 
+  geom_point() +   
+  theme_bw() +
+  theme(legend.position = "bottom", legend.background = element_rect(fill="lightgray")) 
+```
+This scatter plot illustrates total meat consumption per person in kilograms versus crop produced per person in hectares, each point represent on observation per country and per year. In the figure above, it can be seen that for most of the observations, it is not the case that the more meat is eaten in a country the more crop they are producing overall, except for a few clusters. Also, we can see an important relation between the income group of the country and the quantity of meat consumed where it could be said that the higher the income of the country the more willingness to consume meat. In contrast, the countries with upper middle income have the most productive agriculture. 
+
+However, the actual yield that is captured on farm depends on several factors such as the crop's genetic potential, the amount of sunlight, water and nutrients absorbed by the crop, the presence of weeds and pests.
+```{r Ariana meat and crop relation2, echo=FALSE}
+region_2 <- subset(df, Region !="" & TIME < 2020 & TIME >=2015)
+meat.vs.crop.country <- ggplot(region_2, aes(x=MEATCONSUMP.Total.Kg., y=CROP.TYPE.Total.Ha.pP., colour = Income.Group)) + 
+  labs(title = "Meat Consumption and Crop Production by Country", 
+       subtitle = "Period 2015 - 2020",
+       x="Total meat consumption p.P. [kg]", y="Total crop production [ha]", color="Income") + 
+  geom_point() + 
+  geom_text(aes(label = (LOCATION)),
+            check_overlap = TRUE,
+            size = 2,
+            vjust = -1) +
+  theme_bw() +
+  theme(legend.position = "bottom", legend.background = element_rect(fill="lightgray")) 
+
+meat.vs.crop.country
+```
+When we take a closer look to the clusters shown before. We can observe countries like Kazakhstan and Paraguay are producing relatively more crop compared to other countries than the meat they are eating. In contrast to that, Israel is consuming way more meat than they produce crop, followed by USA, Canada and Australia with slightly more crop production.
+
+### Are TSE and Producer Support correlated?
+```{r Adriana TSE and Producer Support, echo=FALSE, fig.height=4}
+ggpairs (data = countries, columns = c(12, 13), aes(colour = Region, alpha=0.5),
+         upper = list(continuous = wrap("cor", size = 2.5)),
+         columnLabels=c("Total Support [%GDP]", "Producer Protection Ratio"),
+         title = "Correlation between Total Support and Producer Protection",
+         theme_bw())
+```
+Total agriculture support against producer protection ratio shows an important correlation for almost any region. This means that the more monetary transfers to support agriculture, the more countries are willing to protect farmers. However, at first glance two groups highlight from majority of observations. Those belong to Europe & Central Asia and East Asia & Pacific which are reflecting higher price distortions in order to support their farmers. Density plots are just reflecting normal distributions for both variables. 
+
+### Is there a correlation of consumed meat and employment in agricultural sector?
+```{r Matthias meat consumption and employment, echo=FALSE}
+income.group <- subset(df, Income.Group !="" & TIME < 2020 & employment !="" & MEATCONSUMP.Total.Kg. !="")
+lm1 <- lm(MEATCONSUMP.Total.Kg. ~ employment, data=income.group)
+income.group <- cbind(income.group, predict(lm1, interval='confidence'))
+ggplot(income.group, aes(x=employment, y=MEATCONSUMP.Total.Kg.)) + 
+  labs(title="Meat consumption depending on employment in agriculture", x="Employment in Agriculture [%]", y="Total meat consumption p.P. [kg]", color="Income") + 
+  geom_point(aes(colour = Income.Group)) +
+  geom_line(aes(x=employment, y=fit)) +
+  theme_bw() + 
+  theme(legend.position = c(0.8,0.8)) 
+```
+It seems that there is a negative relationship between meat consumption and employment in agricultural sector. So societies where fewer people work in agriculture tend to consume more meat. We assume that there is no direct relationship between these variables but that there is another hidden variable behind these two. So wealth of a country could be this hidden variable. Richer countries seem to have a lower employment in agriculture cause of division of labor and higher industrialization in agriculture fewer people have to work in the agricultural sector where in poorer countries people at foremost have to take care of getting enough to eat and do agriculture on their own. So the employment is not the reason for higher meat consumption but can be seen as an indicator. These interpretations about the variable wealth in the background are supported by the distribution of the different income groups. So high income people have a lower employment in agriculture and vice-versa.
+
+## Meat and Culture
+In the previous section we described the influence of wealth of one country on its meat consumption. In this part we will focus on relationships of different cultures and how a culture might determine the meat consumption. For that we compare different regions and also countries with each other. But we will begin with the debate about vegetarianism and if it influenced the comsumptional behavior sustainably.
+       
+### Is there a tendency of people becoming vegetarian/vegan over time?
+During the last years there is a increasing tendency in the German society or at least in the German media of consuming meat more responsible. So it is an interesting questions if this trend is just done by the media or if it is a real trend which also shows its response in a lower meat consumption. So following this trend of vegetarianism we should see some kind of decreasing meat consumption. Unfortunately there is no data about the German meat consumption but a similar trend should be also seen in similar industrialized countries with a similar culture. For that reason we plotted the total meat consumption for all countries and the last thirty years. 
+
+```{r Matthias heatmap for countries and total meat consumption, echo=FALSE, results='hide', fig.align='center'}
+country <- subset(df, df$Country.Name !="" & df$TIME < 2020)
+ggplot(country, aes(TIME, Country.Name, fill= MEATCONSUMP.Total.Kg.)) + 
+  geom_tile() +
+  scale_fill_gradient(low="white", high="red", name="Total meat consumption") +
+  labs(title = "Total meat consumption of the countries by years", x= "Time [years]", y="Country") +
+  theme(legend.position = "bottom", legend.direction = "horizontal") + 
+  theme_bw()
+```
+As it can be seen, there is a trend that there is more and more meat consumed per person and especially in South American countries people tend to eat more meat. Our hypothesis of a decreasing meat consumption in Europe and North America cannot be supported in general as the USA and Australia remained on a high level of meat consumption. But in countries like Canada and New Zealand people really tend to consume less meat. It was quite surprising that Paraguay a South American country reduced its meat consumptions against the general tendency in Southern America of an increasing meat consumption.  
+
+### Are there clusters of which animals are eaten? So, do world regions differ by the animals they eat?
+Meat consumption might not be just dependent by the wealth of a country but there might be also differences which kind of meat is eaten. For this reason we wanted to watch more on the different kind of meat and which countries consume which meat cause of their cultures. So we would assume for example that in Islamic countries the consumption of pig would be small. 
+
+```{r Abdennaceur mosaic plot region kind of meat, echo=FALSE}
+country <- subset(df, Country.Name!="" & Region!="" & TIME < 2020)
+
+country <- melt(country, id=c("Country.Name", "LOCATION", "Region", "Income.Group", "TIME"),
+                measure.vars = c("MEATCONSUMP.Beef.Kg.", "MEATCONSUMP.Pig.Kg.", "MEATCONSUMP.Sheep.Kg.", "MEATCONSUMP.Poultry.Kg."))
+
+colorder <- c( "red", "pink", "black", "brown")
+ggplot(country) +
+  geom_mosaic(aes(x=product(Region), fill=variable, weight=value)) +
+  scale_fill_manual(values=colorder, labels=c("Beef","Pig","Sheep","Poultry"), name="Group") +
+  scale_y_continuous(labels = scales::percent) + 
+  labs(title="Consumed meat by region", x="Region", y="Consumed Meat") +
+  coord_flip() +
+  theme_bw()
+```
+
+In the plot above we can see the different kind of consumed meats for the different regions. As we expected, in Middle East & North Africa people almost eat no pig. Instead people of this region eat more sheep (and probably goat). A similar effect can be also seen for South Asian countries as these cultures might partly also be influenced by Islam. It is interesting to see that the sheep consumption is also significant in Europe and East Asia & Pacific. At this point we would dig more into the data how East Asia & Pacific are related to Europe for their meat consumption. 
+
+### Do countries differ by the animals they eat?
+To answer this question we dive one stage below and have a look for the individual consumptional behaviour of single countries.
+
+```{r Abdennaceur mosaic plot countries kind of meat, fig.height = 10, echo=FALSE}
+country <- subset(df, Country.Name!="" & TIME < 2020)
+
+country <- melt(country, id=c("Country.Name", "LOCATION", "Region", "Income.Group", "TIME"),
+                measure.vars = c("MEATCONSUMP.Beef.Kg.", "MEATCONSUMP.Pig.Kg.", "MEATCONSUMP.Sheep.Kg.", "MEATCONSUMP.Poultry.Kg."))
+
+colorder <- c( "red", "pink", "black", "brown")
+ggplot(country) +
+  geom_mosaic(aes(x=product(Country.Name), fill=variable, weight=value)) +
+  scale_fill_manual(values=colorder, labels=c("Beef","Pig","Sheep","Poultry"), name="Group") +
+  scale_y_continuous(labels = scales::percent) + 
+  labs(title = "Consumed meat by country", x="Country", y="Consumed Meat") +
+  theme(legend.position = "bottom", legend.direction = "horizontal") +
+  coord_flip() +
+  theme_bw()
+```
+
+If we compare now the data for China, Vietnam and South Korea we can see that these countries eat not so much sheep. But New Zealand and also Australia eat a larger amount of sheep. Still being in the same Region the consumption behaviour of these Pacific countries differs from the East Asian countries and this can also explain the similarity of this region to Europe as Australias and New Zealands culture is strongly influenced by Europe and like this also its consumptional behaviour is still similar. 
+
+There are other interesting effects to be seen. Nigeria has one of the biggest proportions of consumed sheep. Here a closer look could help to explain why people in this country consume so much sheep meat and if this effect is culturally determined or just a temporarily effect caused by external influences.
+
+```{r Matthias Nigeria, echo=FALSE}
+country <- subset(df, Country.Name!="" & TIME < 2020)
+nigeria <- subset(country, country$Country.Name=="Nigeria")
+ggplot(nigeria, aes(x=unique(TIME))) + 
+  geom_point(aes(y=MEATCONSUMP.Beef.Kg., color="Beef")) + 
+  geom_point(aes(y=MEATCONSUMP.Sheep.Kg., color="Sheep")) + 
+  geom_point(aes(y=MEATCONSUMP.Pig.Kg., color="Pig")) + 
+  geom_point(aes(y=MEATCONSUMP.Poultry.Kg., color="Poultry")) + 
+  scale_color_manual(labels=c("Beef", "Sheep", "Pig", "Poultry"), values=c("red", "black", "pink", "brown")) + 
+  labs(title= "Meat consumption in Nigeria across the time", x="Time [years]", y="Consumed meat p.P. [kg]", color="Kind of meat") + 
+  theme_bw()
+```
+Within this graph where the meat consumption of nigerian people is plotted against the time, one can see that the sheep consumption increased during the time. So it tends to not be a stabil cultural effect but something changed during the last 25 years. Maybe this change is caused by the climate change. As the desertification of the Sahel, the south Sahara region, accelerates nigerian settled farmers were not any longer able to produce enough crop for their animals. The landscape became dryer and herders of the north like from Chad and Niger traveled with their animals, mainly goats and sheep southwards. This reduced on one side the offer for beef and poultry and increased the offer for sheep. Like this we can see effects of the climate change already in this data. 
+
+
+## Meat and Health
+While wealth of countries and its culture are important drivers for meat consumption; its known that despite its nutritional benefits, there is an increasing evidence that suggests that regular consumption of red meat may lead in negative health impact and disease risk. In this section we analyze briefly life expectancy and its connection to meat consumption.
+
+### Is there a correlation by the eaten animals and the life expectancy from different countries?
+We would suggest from previous studies (Al-Shaar, Satija et Al., 2020) that a high meat consumption would lead to a higher risk of heart attacks and then to a reduced life expectancy. 
+
+```{r Matthias life expectancy by meat, echo=FALSE}
+# total meat
+ggplot(df, aes(x=MEATCONSUMP.Total.Kg.)) + 
+  geom_point(aes(y=Life.expectancy.at.birth..female..years., color="female")) +
+  geom_point(aes(y=Life.expectancy.at.birth..male..years., color="male")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..female..years., color="female2")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..male..years., color="male2")) +
+  scale_color_manual(breaks=c("female", "male", "female2", "male2"), values=c("pink", "lightblue", "red", "blue"), labels=c("female", "male", "female", "male")) + 
+  labs(x="Total meat consumption p.P. [kg]", y="Life expectancy dependent on gender [years]", color="Gender") +
+  theme_bw() +
+  theme(legend.position = c(0.7,0.2))
+# beef
+beef <- ggplot(df, aes(x=MEATCONSUMP.Beef.Kg.)) + 
+  geom_point(aes(y=Life.expectancy.at.birth..female..years., color="female")) +
+  geom_point(aes(y=Life.expectancy.at.birth..male..years., color="male")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..female..years., color="female2")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..male..years., color="male2")) +
+  scale_color_manual(breaks=c("female", "male", "female2", "male2"), values=c("pink", "lightblue", "red", "blue"), labels=c("female", "male", "female", "male")) + 
+  labs(x="Total beef consumption p.P. [kg]", y="Life expectancy [years]") + 
+  theme_bw() + 
+  theme(legend.position ="none")
+
+# pig
+pig <- ggplot(df, aes(x=MEATCONSUMP.Pig.Kg.)) + 
+  geom_point(aes(y=Life.expectancy.at.birth..female..years., color="female")) +
+  geom_point(aes(y=Life.expectancy.at.birth..male..years., color="male")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..female..years., color="female2")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..male..years., color="male2")) +
+  scale_color_manual(breaks=c("female", "male", "female2", "male2"), values=c("pink", "lightblue", "red", "blue"), labels=c("female", "male", "female", "male")) + 
+  labs(x="Total pig consumption p.P. [kg]", y="Life expectancy [years]") + 
+  theme_bw() + 
+  theme(legend.position ="none")
+
+# sheep
+sheep <- ggplot(df, aes(x=MEATCONSUMP.Sheep.Kg.)) + 
+  geom_point(aes(y=Life.expectancy.at.birth..female..years., color="female")) +
+  geom_point(aes(y=Life.expectancy.at.birth..male..years., color="male")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..female..years., color="female2")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..male..years., color="male2")) +
+  scale_color_manual(breaks=c("female", "male", "female2", "male2"), values=c("pink", "lightblue", "red", "blue"), labels=c("female", "male", "female", "male")) + 
+  labs(x="Total sheep consumption p.P. [kg]", y="Life expectancy [years]") + 
+  theme_bw() + 
+  theme(legend.position ="none")
+
+# poultry
+poultry <- ggplot(df, aes(x=MEATCONSUMP.Poultry.Kg.)) + 
+  geom_point(aes(y=Life.expectancy.at.birth..female..years., color="female")) +
+  geom_point(aes(y=Life.expectancy.at.birth..male..years., color="male")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..female..years., color="female2")) +
+  geom_smooth(aes(y=Life.expectancy.at.birth..male..years., color="male2")) +
+  scale_color_manual(breaks=c("female", "male", "female2", "male2"), values=c("pink", "lightblue", "red", "blue"), labels=c("female", "male", "female", "male")) + 
+  labs(x="Total poultry consumption p.P. [kg]", y="Life expectancy [years]") + 
+  theme_bw() + 
+  theme(legend.position ="none")
+
+
+(beef + pig) /(sheep + poultry) +
+  plot_annotation(title = "Life expectancy by kind of meat") +
+  plot_layout(guides = "collect")
+```
+
+So we did a scatter plot and added some regression lines to it, first for all meat against the life expectancy and afterwards for every kind of meat. Our suggestion that an increased meat consumption would lead to a lower life expectancy could not be confirmed. In general it can be said that already the consumption of 20 kg of meat instead of just 10 kg per year would increase the life expectancy by 10 years. But further increasing of the meat consumption does not increase the life expectancy with this amount. In contrary, there can be found a slight effect that the consumption of too much beef might reduce the life expectancy.
+
+But these findings have to be interpreted within the context. Cause the data and also our other findings does not support the theory that there is a relationship of cause and mean between these two variables, especially not on a global scale. Life expectancy might be more related to other factors like the availability of a good health system including the possibility to go to a doctor or a hospital, maybe also by enough food and the fight against diseases caused by unhealthy life conditions with contaminated water. Meat consumption might be more an indicator showing that one has enough money to afford also meat. So it is more probable that the cause of these correlations is again wealth and how developed a country is instead of a direct causal relationship.
+
+## Meat and climate
+
+### Is there a relationship between green house gas emission and meat consumption?
+
+For answering this question a Principal Component Analysis is done. It is tried to reduce the dimensionality from four dimensions to just two dimensions. The four input variables are the total meat consumption, the total crop production, the methane emissions and the CO2 emissions. All the variables are calculated per capita.
+
+```{r Matthias PCA, echo=FALSE}
+pca.raw <- subset(df, (df$MEATCONSUMP.Total.Kg. !="") & (df$CROP.TYPE.Total.Ha.pP.!="") & 
+                     (df$CO2.emissions..metric.tons.per.capita.!="") & (df$Methane.emissions..kt.of.CO2.equivalent.pP.!="") & (df$Income.Group!=""))
+pca.input <- cbind(pca.raw$MEATCONSUMP.Total.Kg., pca.raw$CROP.TYPE.Total.Ha.pP.,
+                   pca.raw$CO2.emissions..metric.tons.per.capita., pca.raw$Methane.emissions..kt.of.CO2.equivalent.pP.)
+
+row.names(pca.raw) <- paste(pca.raw$Income.Group, pca.raw$LOCATION,  row.names(pca.raw), sep="_") 
+pca.raw$Income.Group <- NULL
+pca.raw$LOCATION <- NULL
+pca <- prcomp(pca.input, scale=TRUE)
+
+df_out <- as.data.frame(pca$x)
+df_out$group <- sapply( strsplit(as.character(row.names(pca.raw)), "_"), "[[", 1 )
+eigs <- pca$sdev^2
+
+df.var.explained <- data.frame(PC= paste0("PC",1:4),
+                               var.expl=(pca$sdev)^2/sum((pca$sdev)^2), var.expl.scree = (pca$sdev)^2)   
+scree_plot <- ggplot(df.var.explained, aes(x=PC, y=var.expl.scree, group=1)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 1, linetype="dashed") +
+  labs(title="Scree plot", x = "Principal Components", y = "Variance") +
+  theme_bw()
+
+cvar_plot <- ggplot(df.var.explained, aes(x=PC, y=cumsum(var.expl), group=1)) +
+  geom_point() +
+  geom_line() +
+  labs(title="Cumulative relative variance plot", x = "Principal Components", y = "Explained Variance [%]") +
+  theme_bw() 
+
+(scree_plot + cvar_plot)
+```
+
+In the PCA screeplot as well as the cumulative relative variance (cvar) plot above, one can see the impact of the four principal components. The first two can explain together 76.99% of the total variance. By using the ellbow method one would decide for using two PCs, even the result is not quite strong. The alternative method is picking these PCs which have an absolute variance > 1. The 2nd PC is very close to 1 but still above. So also this method suggests us to include these two PCs.
+Next we are going to have a look how the PCA represents our four dimensional data in a two dimensional plot.
+
+```{r Matthias pca big one, echo=FALSE, fig.height=7}
+ggplot(df_out,aes(x=PC1,y=PC2,color=group, label=sapply( strsplit(as.character(row.names(pca.raw)), "_"), "[[", 2 ) )) +
+  geom_point() +  
+  labs(title="PCA for meat consumption, crop production, methane & CO2 emissions", color="Income",
+       x=paste("PC1 (", round(eigs[1]*100 / sum(eigs),2), "%)" ),
+       y=paste("PC2 (", round(eigs[2]*100 / sum(eigs),2), "%)" )) +
+  geom_text(check_overlap = TRUE, size = 4, vjust = -1) +
+  theme_bw() + 
+  theme(legend.position=c(0.2,0.15))
+```
+
+In the PCA biplot above, one can see the first two principal components as x- and y-axes. The income groups we already know from previous plots are presented in different colors. The single points indicate one country per year. The country code is also mentioned close to it. There are some different clusters to be identified. One is for the USA in the south-west, another one is for India and China in the south-east of the plot. It is interesting to see that the lower income groups are concentrated in the top left corner. Furthermore the western countries are spread over the whole width of the plot. 
+
+It is difficult to interpret the arrangement of different countries. It seems like PC2 might be related to the usage of fossil energies while having big economies and a high population. This would explain why China and India, both Countries still have lots of coal powerplants, have the most negative value of PC2, followed by the USA while other countries, are more in the top part of the plot, either not being industrialized and therefore consuming less energy or already focusing on fewer fossil energies.
+
+PC1 could be related to the concept of Individualism-Collectivism from culture psychology developed by Hofstede (1980). It classifies countries by their tendency for either Individualism (people focus more about their own goals, define themselves about their personality) or collectivism (people focus more on the group, define themselves about their relationships to others). He studied several countries, giving them values from 0 (low individualism / high collectivism) to 100 (high individualism / low collectivism). The highest values have the USA (91) and Australia (90), followed by other western countries as the United Kingdom (89) or Canada (80). Low values have China (20), South Korea (18) but also african countries as Ethiopia (20) or Middle East Asian countries as Egypt (25). Russia (39), Brazil (38), Israel (54) or Ukraine (25) find itself in the middle. So these findings tend to support the idea that there could be a relationship as the countries are more or less ordered like this within the plot on the x-axis. But there are also countries which do not support this hypothesis like India (48) being at the right edge of the plot or Paraguay (12) being in the middle of the plot.
+
+Summarizing one can say that the PCA groups the countries somehow even if we can not really find out why and how. 
+
+
+# Summary 
+## Discussion of the content
+During this study we had a look on the consumption of meat and its connections to wealth, culture, health and the climate. We can conclude that wealth has an influence on the total consumption of meat. People with a lower income tend to consume less meat while people with an higher income also consume more meat. We also found effects that people with a higher income does not consume proportionally more meat. There is more a kind of high point and people from countries with a higher GDP even consume less meat. A trend like the vegetarianism debate can be found for countries like Canada and New Zealand. 
+
+While wealth mainly influences how much meat people eat, the culture and/or religion seems to give an answer which kind of meat is consumed. So we could find a relationship that islamic influenced countries eat less pig and Australia and New Zealands having a western culture are also similar within their meat consumption to European or Northern American countries as Norway or the USA.
+
+We did not find any direct relationships between health and meat consumption as both variables are strongly influenced by wealth but are not directly dependent from each other.
+Calculating a PCA on four variables gave us an interesting inside with some clusters like India and China, the USA, other western countries, and rest of the world. It was difficult to find real answers what the PCs could represent. Our hypotheses that PC1 might be related with Individualism/Collectivism from Hofstede and PC2 might be related to the usage of fossil energy power-plants while having big economies should be more investigated in the future.
+
+## Discussion of the method
+The main focus of the presented analysis was to explore different visualization methods using R software. After experimenting with multiple alternatives for visualizing our dataset, we briefly discussed our key findings while exploring the data and decided on meaningful types of plots in order to address our hypotheses. 
+
+Our approach to visualize meat consumption and crop production distributions by region was to use boxplots. First, because we wanted to show multiple distributions at the same time (by region) and second, to understand overall shifts among the distributions. Although we have to be careful as a spreading (high variance) can be caused by external factors or just by increasing over the time as we see between poultry and sheep. Nevertheless, boxplots are a great option to introduce data distributions. 
+
+Also, when we experimented with options to compare proportions for many categorical variables we had used a mosaic plot to easily visualize meat consumption habits through regions and countries emphasizing on kinds of meat. While there are other alternatives like Pie Charts, Stacked Densities or Stacked Bars to distinguish proportions, mosaic plots were an effective way particularly because we wanted to compare multiple sets of proportions according to multiple grouping variables. In that regard, mosaic plots are helpful when we need to melt all levels of grouping variables. 
+
+In order to address correlation questions along our analysis, scatter plots were a very useful choice when we compare a quantitative variable relative to another. For showing curves we did not stick to the usual geom_line() command as the result was a curve which was jumping a lot. To see a better tendency inside the graph, we decided to smooth the curve a bit by using a regression line. So we decided to use the geom_smooth() command to plot the curve. By default it uses the LOESS (Locally Weighted Scatterplot Smoothing) algorithm. 
+
+LOESS is a method which does a regression but instead of using all data to fit the regression line the algorithm just selects a window of k points around the datapoint which should be fitted. The weights depend on the distances on the x-axis from this datapoint. As a result, it calculates n different regression lines, one for each datapoint, and also n fitted values. In a second step the algorithm does the same procedure again but this time it uses the residuals as weights. The smaller they are, the more weighted they will be. This second step is repeated several times until we get a smooth line. The usual regression function used for it is a simple y~x simple linear regression. 
+
+Finally, in terms of design, we frequently used colors to distinguish data by another categorical variable like income group, region or kind of meat. Colors are a good alternative when it is worth to add a meaningful variable towards better understanding of the data. It's also the case where color as scale has been used, data values as colors are particularly useful when we want to show how the data values vary across geographic regions like it was our case with meat consumption around the globe. 
+
+For showing the relationship of more than three different variables just the x-axis, y-axis and different colors were not enough. So we decided to do a PCA for four variables. It was enlightening that real data is not so easy to interpret. It started already by some uncertainty where the elbow of the data might be as it was difficult to distinguish the right PC for it. Certainly, it was even more complicated as we had just 4 PCs. But also the interpretation of the scatter plot later on became difficult as it is just possible to see some kind of similarities between some countries but we did not know where these similarities but also differences might come from. It is also very probable that there might not be one underlying cause for the distribution of the data but many different ones.
+
+
+# Data Sources 
+* The World Bank, [https://data.worldbank.org/](https://data.worldbank.org/])
+* The Organization for Economic Cooperation and Development (OECD), [https://www.oecd.org/germany/](https://www.oecd.org/germany/)
+
+# Bibliography
+* Al-Shaar L, Satija A, Wang D D, Rimm E B, Smith-Warner S A, Stampfer M J et al. Red meat intake and risk of coronary heart disease among US men: prospective cohort study BMJ 2020; 371 :m4141 doi:10.1136/bmj.m4141 
+* Godfray*, H. Charles J.; Aveyard, Paul; Garnett, Tara; Hall, Jim W.; Key, Timothy J.; Lorimer, Jamie; Pierrehumbert, Ray T.; Scarborough, Peter; Springmann, Marco; Jebb, Susan A.; Meat consumption, health, and the environment, AAAS, 20 Jul 2018, [https://science.sciencemag.org/content/361/6399/eaam5324/tab-pdf](https://science.sciencemag.org/content/361/6399/eaam5324/tab-pdf)
+* González, Neus; Marquès, Montse; Nadal, Martí; Domingo, José L.; Food Research International, Elsevier, November 2020, [https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7256495/](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7256495/)
+* Hofstede, Geert (1980): Culture’s Consequences – International Differences in Work Related Values. Newbury Park, London/Neu-Delhi.
+* Ritchie, Hannah; Roser, Max; Meat and Dairy Production, Our World in Data, August 2017; last revision in November 2019,  [https://ourworldindata.org/meat-production](https://ourworldindata.org/meat-production)
+* Wilke, Claus O. (2019): Fundamentals of Data Visualization. O'Reilly,  [https://serialmentor.com/dataviz/](https://serialmentor.com/dataviz/)
+
