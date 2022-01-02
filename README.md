@@ -1,6 +1,6 @@
 # Data-Visualization-with-ggplot
-##MSc Data Science project for Data Visualization lecture
-##This analysis was made together with Abdennaceur Mhabdhbi & Matthias Kunz
+MSc Data Science project for Data Visualization.
+This analysis was made together with Abdennaceur Mhabdhbi & Matthias Kunz.
 
 Feeding the world in a sustainable way is one of our most pressing challenges in the coming decades. While
 consumption of meat and meat products means an important source of nutrients like proteins, iron and
