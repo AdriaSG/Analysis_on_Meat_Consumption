@@ -1,5 +1,5 @@
 # 🥩 Anlysis on Meat Consumption
-### Mastering Data Vosualization in R.
+### Mastering Data Visualization in R.
 **Tools: R, ggplot, markdown.**
 
 ### Abstract
